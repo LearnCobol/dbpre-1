@@ -1,0 +1,14 @@
+----+-*--1-!--+----2----+----3----+----4----+----5----+----6----+----7-!--+----8
+        01  POCTBBATWS.
+          05  POCTB-PROGRAM-NAME              PIC X(10).
+          05  FILLER                          PIC X VALUE LOW-VALUE.
+          05  POCTB-DATE                      PIC X(10).
+          05  POCTB-TIME                      PIC X(10).
+          05  POCTB-STAGE                     PIC 9.
+          05  POCTB-STATUS-FLD                PIC 9(03).
+            88 POCTB-OK                       VALUE 0.
+            88 POCTB-NO-DATA                  VALUE 1.
+            88 POCTB-INVALID-INPUT            VALUE 2.
+            88 POCTB-ERROR                    VALUE 999.
+          05  POCTB-ERROR-MESSAGE             PIC X(67).
+          05  POCTB-ERRNO                     PIC 9(04).
