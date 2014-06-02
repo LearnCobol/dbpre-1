@@ -35,7 +35,8 @@
 	#define cob_call_params cobglobptr->cob_call_params
 	#define cob_current_module cobglobptr->cob_current_module
 	static
-	void *cobglobptr;
+	//void *cobglobptr;
+	cob_global *cobglobptr;
 #endif
 
 //function pointer prototype should not include paramater names                        //121609
@@ -262,11 +263,18 @@ int MySQL_fetch_row(MYSQL_RES **result, ...)                                    
   {                                                                                    //050709
     // cob_call_params contains the number of parameters passed.  we subtract 1 to     //121609
     // account for the WS-MYSQL-RESULT.                                                //121609
-    //maxcols = min(cob_call_params, mysql_num_fields(*result));                       //121609
-    maxcols = min(cob_call_params - 1, mysql_num_fields(*result));                     //121609
+#ifdef cob_c8_t  // for GnuCobol 2.xx  20140518
+    maxcols = min(cob_call_params, mysql_num_fields(*result));
+#else
+    maxcols = min(cob_call_parameters - 1, mysql_num_fields(*result)); //121609
+#endif
     for(j=0; j<maxcols; j++)                                                           //050709
     {                                                                                  //050709
+#ifdef cob_c8_t  // for GnuCobol 2.xx  20140518
+      cob_field *cf_from_cobol = cob_current_module->cob_procedure_params[j+1];    //050709
+#else
       cob_field *cf_from_cobol = cob_current_module->cob_procedure_parameters[j+1];    //050709
+#endif
       if(res[j] == NULL)                                                               //050709
       {                                                                                //050709
       //memset(cf_from_cobol->data, (char)NULL, strlen(cf_from_cobol->data));          //070109
@@ -320,7 +328,8 @@ int MySQL_fetch_record(MYSQL_RES **result, ...)                                 
     maxcols = mysql_num_fields(*result);                                               //121609
     for(j=0; j<maxcols; j++)                                                           //121609
     {                                                                                  //121609
-      cob_field *cf_from_cobol = cob_current_module->cob_procedure_parameters[j+1];    //121609
+      //cob_field *cf_from_cobol = cob_current_module->cob_procedure_parameters[j+1];    //121609
+      cob_field *cf_from_cobol = cob_current_module->cob_procedure_params[j+1];    //121609
       if(res[j] == NULL)                                                               //121609
       {                                                                                //121609
         memset(cf_from_cobol->data, 0, cf_from_cobol->size);                           //121609

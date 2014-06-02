@@ -9,7 +9,7 @@
 # endif
 
 # define DBPREVERSION "V 0.3"
-# define DBPREVERSIONLONG "V 0.3 2014-06-02"
+# define DBPREVERSIONLONG "V 0.3 2014-05-22"
 
 char infilename[256];
 int tabstop=3;
@@ -48,6 +48,40 @@ int fpincnt=0;
 
 int errorcnt=0;
 
+/******************************************************************************/
+/*
+ * Find the first occurrence of find in s, ignore case.
+ */
+char *strcasestr(const char *s, const char *find)
+{
+		  char c, sc;
+		  size_t len;
+
+		  if ((c = *find++) != 0) {
+					 c = tolower((unsigned char)c);
+					 len = strlen(find);
+					 do {
+								do {
+										  if ((sc = *s++) == 0)
+													 return (NULL);
+								} while ((char)tolower((unsigned char)sc) != c);
+					 } while (strncasecmp(s, find, len) != 0);
+					 s--;
+		  }
+		  return ((char *)s);
+}
+/******************************************************************************/
+int strcasecmp(const char *s1, const char *s2)
+{
+    const u_char
+    *us1 = (const u_char *)s1,
+    *us2 = (const u_char *)s2;
+
+    while (tolower(*us1) == tolower(*us2++))
+    if (*us1++ == '\0')
+       return (0);
+    return (tolower(*us1) - tolower(*--us2));
+}
 /******************************************************************************/
 void trim(char *s)
 {
@@ -286,46 +320,6 @@ void ucase(char *s)
 		  }
 }
 /******************************************************************************/
-int replace_text(char *s, char *alt, char *neu)
-{
-		  int l, la, ln;
-		  void *p;
-		  long off;
-
-		  //printf("replace_text('%s', '%s', '%s')\n", s, alt, neu);
-		  l=strlen(s);
-		  la=strlen(alt);
-		  ln=strlen(neu);
-
-		  if(strcmp(alt, neu)==0){
-					 return(FALSE);
-		  }
-
-		  p=(void*)strcasestr(s, alt); // strcasestr = not case sensitive!!!
-		  if(p==NULL){
-					 return(FALSE);
-		  }
-
-		  off=(long)p-(long)s;
-
-		  if(la==ln){
-					 memmove(s+off, neu, ln);
-					 return(TRUE);
-		  }
-		  if(la>ln){
-					 memmove(s+off, neu, ln);
-					 memmove(s+off+ln, s+off+la, l-la+1);
-					 return(TRUE);
-		  }
-		  if(la<ln){
-					 memmove(s+off+ln, s+off+la, l-la+1);
-					 memmove(s+off, neu, ln);
-					 s[l-la+ln]=0;
-					 return(TRUE);
-		  }
-		  return(FALSE);
-}
-/******************************************************************************/
 int strUcmp(char *s1, char *s2)
 {
 		  char zwi1[32768];
@@ -352,6 +346,25 @@ int strUncmp(char *s1, char *s2, int len)
 		  zwi2[len]=0;
 
 		  return(strcmp(zwi1, zwi2));
+}
+/******************************************************************************/
+void do_output(char *line)
+{
+
+	if(freestyle==TRUE){
+		if(line[6]=='*'){
+			fprintf(fpout, "// %s\n", line+7);
+			fprintf(fplst, "// %s\n", line+7);
+		}
+		else{
+			fprintf(fpout, " %s\n", line+7);
+			fprintf(fplst, " %s\n", line+7);
+		}
+	}
+	else{
+		fprintf(fpout, "%s\n", line);
+		fprintf(fplst, "%s\n", line);
+	}
 }
 /******************************************************************************/
 int read_line(FILE *fp, char *s)
@@ -425,6 +438,7 @@ void handle_options(int argc, char **argv)
 					puts("-v, --version  - print version of dbpre");
 					puts("-I             - specify path for copybooks, e.g -I/tmp/copybooks/");
 					puts("-ts            - tab stop, tabs will be expanded to nnn spaces, e.g. -ts=3");
+					puts("-f             - freestyle source code formatting allowed");
 					puts("");
 					puts("Developed by the_piper@web.de");
 					puts("For more infos see here: http://pipersopencoboltoolbox.blogspot.de/");
@@ -516,40 +530,27 @@ void parse_fetch_statement(FILE *fp, FILE *fplst)
 		return;
 	}
 	//printf("statement=>%s<\n", statement);
-
-	fprintf(fp, "DBPRE       IF SQLCA-CURSOR-CTRL (%d) = 0\n", idx+1);
-	fprintf(fplst, "DBPRE       IF SQLCA-CURSOR-CTRL (%d) = 0\n", idx+1);
-	fprintf(fp, "DBPRE          SET DB-CURSOR-NOT-OPEN TO TRUE\n");
-	fprintf(fplst, "DBPRE          SET DB-CURSOR-NOT-OPEN TO TRUE\n");
-	fprintf(fp, "DBPRE          PERFORM DB-STATUS\n");
-	fprintf(fplst, "DBPRE          PERFORM DB-STATUS\n");
-	fprintf(fp, "DBPRE       END-IF\n");
-	fprintf(fplst, "DBPRE       END-IF\n");
-	fprintf(fp,"DBPRE          CALL 'MySQL_fetch_row' USING SQLCA-RESULT (%d)\n",
-	        idx+1);
+	
+	sprintf(zwi, "DBPRE       IF SQLCA-CURSOR-CTRL (%d) = 0", idx+1);
+	do_output(zwi);
+	do_output("DBPRE          SET DB-CURSOR-NOT-OPEN TO TRUE");
+	do_output("DBPRE          PERFORM DB-STATUS");
+	do_output("DBPRE       END-IF");
+	sprintf(zwi,"DBPRE          CALL 'MySQL_fetch_row' USING SQLCA-RESULT (%d)", idx+1);
+	do_output(zwi);
 	for(t=1;;t++){
 		word(variables, zwi, t);
 		if(strlen(zwi)==0) break;
-		fprintf(fp, "DBPRE                                          %s\n", zwi);
+		sprintf(zwi2, "DBPRE                                          %s", zwi);
+		do_output(zwi2);
 	}
-	fprintf(fp, "DBPRE          END-CALL\n");
-	fprintf(fp, "DBPRE          IF SQLCA-RESULT (%d) = NULL\n", idx+1);
-	fprintf(fp, "DBPRE             MOVE 100 TO SQLCODE\n");
-	fprintf(fp, "DBPRE          ELSE\n");
-	fprintf(fp, "DBPRE             MOVE 0 TO SQLCODE\n");
-	fprintf(fp, "DBPRE          END-IF\n");
-	fprintf(fplst, "DBPRE          CALL 'MySQL_fetch_row' USING SQLCA-RESULT (%d)\n", idx+1);
-	for(t=1;;t++){
-		word(variables, zwi, t);
-		if(strlen(zwi)==0) break;
-		fprintf(fplst, "DBPRE                                          %s\n", zwi);
-	}
-	fprintf(fplst, "DBPRE          END-CALL\n");
-	fprintf(fplst, "DBPRE          IF SQLCA-RESULT (%d) = NULL\n", idx+1);
-	fprintf(fplst, "DBPRE             MOVE 100 TO SQLCODE\n");
-	fprintf(fplst, "DBPRE          ELSE\n");
-	fprintf(fplst, "DBPRE             MOVE 0 TO SQLCODE\n");
-	fprintf(fplst, "DBPRE          END-IF\n");
+	do_output("DBPRE          END-CALL");
+	sprintf(zwi, "DBPRE          IF SQLCA-RESULT (%d) = NULL", idx+1);
+	do_output(zwi);
+	do_output("DBPRE             MOVE 100 TO SQLCODE");
+	do_output("DBPRE          ELSE");
+	do_output("DBPRE             MOVE 0 TO SQLCODE");
+	do_output("DBPRE          END-IF");
 	//printf("variables=>%s<\n", variables);
 }
 /******************************************************************************/
@@ -566,41 +567,29 @@ void parse_delete_statement(FILE *fp, FILE *fplst)
 	strcpy(statement, "");
 	strcpy(variables, "");
 	stage=0;
-	fprintf(fp, "DBPRE   MOVE LOW-VALUES TO SQLCA-STATEMENT\n");
-	fprintf(fplst, "DBPRE   MOVE LOW-VALUES TO SQLCA-STATEMENT\n");
-	fprintf(fp, "DBPRE   STRING\n");
-	fprintf(fplst, "DBPRE   STRING\n");
+	do_output("DBPRE   MOVE LOW-VALUES TO SQLCA-STATEMENT");
+	do_output("DBPRE   STRING");
 	for(t=1;;t++){
 		word(collect_container, zwi, t);
 		if(strlen(zwi)==0) break;
 		if(zwi[0]==':'){
-			fprintf(fp, "DBPRE   QUOTE DELIMITED SIZE\n");
-			fprintf(fp, "DBPRE   %s DELIMITED SIZE\n", zwi+1);
-			fprintf(fp, "DBPRE   QUOTE DELIMITED SIZE\n");
-			fprintf(fplst, "DBPRE   QUOTE DELIMITED SIZE\n");
-			fprintf(fplst, "DBPRE   %s DELIMITED SIZE\n", zwi+1);
-			fprintf(fplst, "DBPRE   QUOTE DELIMITED SIZE\n");
-			fprintf(fp, "DBPRE   ' ' DELIMITED SIZE\n");
-			fprintf(fplst, "DBPRE   ' ' DELIMITED SIZE\n");
+			do_output("DBPRE   SQLCA-QUOTE DELIMITED SIZE");
+			sprintf(zwi2, "DBPRE   %s DELIMITED SIZE", zwi+1);
+			do_output(zwi2);
+			do_output("DBPRE   SQLCA-QUOTE DELIMITED SIZE");
+			do_output("DBPRE   ' ' DELIMITED SIZE");
 		}
 		else{
 			strcat(zwi, " ");
-			fprintf(fp, "DBPRE   '%s' DELIMITED SIZE\n", zwi);
-			fprintf(fplst, "DBPRE   '%s' DELIMITED SIZE\n", zwi);
+			sprintf(zwi2, "DBPRE   '%s' DELIMITED SIZE", zwi);
+			do_output(zwi2);
 		}
 	}
-	fprintf(fp, "DBPRE   INTO SQLCA-STATEMENT\n");
-	fprintf(fplst, "DBPRE   INTO SQLCA-STATEMENT\n");
-	fprintf(fp, "DBPRE   END-STRING\n");
-	fprintf(fplst, "DBPRE   END-STRING\n");
-
-	fprintf(fp, "DBPRE          CALL 'MySQL_query' USING SQLCA-STATEMENT\n");
-	fprintf(fp, "DBPRE          END-CALL\n");
-	fprintf(fp, "DBPRE          MOVE RETURN-CODE TO SQLCODE\n");
-
-	fprintf(fplst, "DBPRE          CALL 'MySQL_query' USING SQLCA-STATEMENT\n");
-	fprintf(fplst, "DBPRE          END-CALL\n");
-	fprintf(fplst, "DBPRE          MOVE RETURN-CODE TO SQLCODE\n");
+	do_output("DBPRE   INTO SQLCA-STATEMENT");
+	do_output("DBPRE   END-STRING");
+	do_output("DBPRE   CALL 'MySQL_query' USING SQLCA-STATEMENT");
+	do_output("DBPRE   END-CALL");
+	do_output("DBPRE   MOVE RETURN-CODE TO SQLCODE");
 }
 /******************************************************************************/
 void parse_update_statement(FILE *fp, FILE *fplst)
@@ -616,48 +605,39 @@ void parse_update_statement(FILE *fp, FILE *fplst)
 	strcpy(statement, "");
 	strcpy(variables, "");
 	stage=0;
-	fprintf(fp, "DBPRE   MOVE LOW-VALUES TO SQLCA-STATEMENT\n");
-	fprintf(fplst, "DBPRE   MOVE LOW-VALUES TO SQLCA-STATEMENT\n");
-	fprintf(fp, "DBPRE   STRING\n");
-	fprintf(fplst, "DBPRE   STRING\n");
+
+	do_output("DBPRE   MOVE LOW-VALUES TO SQLCA-STATEMENT");
+	do_output("DBPRE   STRING");
 	for(t=1;;t++){
 		word(collect_container, zwi, t);
 		if(strlen(zwi)==0) break;
 		if(zwi[0]==':'){
-			fprintf(fp, "DBPRE   QUOTE DELIMITED SIZE\n");
-			fprintf(fp, "DBPRE   %s DELIMITED SIZE\n", zwi+1);
-			fprintf(fp, "DBPRE   QUOTE DELIMITED SIZE\n");
-			fprintf(fplst, "DBPRE   QUOTE DELIMITED SIZE\n");
-			fprintf(fplst, "DBPRE   %s DELIMITED SIZE\n", zwi+1);
-			fprintf(fplst, "DBPRE   QUOTE DELIMITED SIZE\n");
-			fprintf(fp, "DBPRE   ' ' DELIMITED SIZE\n");
-			fprintf(fplst, "DBPRE   ' ' DELIMITED SIZE\n");
+			do_output("DBPRE   SQLCA-QUOTE DELIMITED SIZE\n");
+			sprintf(zwi2, "DBPRE   %s DELIMITED SIZE\n", zwi+1);
+			do_output(zwi2);
+			do_output("DBPRE   SQLCA-QUOTE DELIMITED SIZE\n");
+			do_output("DBPRE   ' ' DELIMITED SIZE\n");
 		}
 		else{
 			if(zwi[0]=='\''){
 				sprintf(zwi2, "'%s' ", zwi);
-				fprintf(fp, "DBPRE   '%s' DELIMITED SIZE\n", zwi2);
-				fprintf(fplst, "DBPRE   '%s' DELIMITED SIZE\n", zwi2);
+				sprintf(zwi, "DBPRE   '%s' DELIMITED SIZE", zwi2);
+				do_output(zwi);
 			}
 			else{
 				strcat(zwi, " ");
-				fprintf(fp, "DBPRE   '%s' DELIMITED SIZE\n", zwi);
-				fprintf(fplst, "DBPRE   '%s' DELIMITED SIZE\n", zwi);
+				sprintf(zwi2, "DBPRE   '%s' DELIMITED SIZE", zwi);
+				do_output(zwi2);
 			}
 		}
 	}
-	fprintf(fp, "DBPRE   INTO SQLCA-STATEMENT\n");
-	fprintf(fplst, "DBPRE   INTO SQLCA-STATEMENT\n");
-	fprintf(fp, "DBPRE   END-STRING\n");
-	fprintf(fplst, "DBPRE   END-STRING\n");
+	do_output("DBPRE   INTO SQLCA-STATEMENT");
+	do_output("DBPRE   END-STRING");
 
-	fprintf(fp, "DBPRE          CALL 'MySQL_query' USING SQLCA-STATEMENT\n");
-	fprintf(fp, "DBPRE          END-CALL\n");
-	fprintf(fp, "DBPRE          MOVE RETURN-CODE        TO SQLCODE\n");
+	do_output("DBPRE          CALL 'MySQL_query' USING SQLCA-STATEMENT");
+	do_output("DBPRE          END-CALL");
+	do_output("DBPRE          MOVE RETURN-CODE        TO SQLCODE");
 
-	fprintf(fplst, "DBPRE          CALL 'MySQL_query' USING SQLCA-STATEMENT\n");
-	fprintf(fplst, "DBPRE          END-CALL\n");
-	fprintf(fplst, "DBPRE          MOVE RETURN-CODE        TO SQLCODE\n");
 }
 /******************************************************************************/
 void parse_insert_statement(FILE *fp, FILE *fplst)
@@ -673,48 +653,37 @@ void parse_insert_statement(FILE *fp, FILE *fplst)
 	strcpy(statement, "");
 	strcpy(variables, "");
 	stage=0;
-	fprintf(fp, "DBPRE   MOVE LOW-VALUES TO SQLCA-STATEMENT\n");
-	fprintf(fplst, "DBPRE   MOVE LOW-VALUES TO SQLCA-STATEMENT\n");
-	fprintf(fp, "DBPRE   STRING\n");
-	fprintf(fplst, "DBPRE   STRING\n");
+
+	do_output("DBPRE   MOVE LOW-VALUES TO SQLCA-STATEMENT");
+	do_output("DBPRE   STRING");
 	for(t=1;;t++){
 		word(collect_container, zwi, t);
 		if(strlen(zwi)==0) break;
 		if(zwi[0]==':'){
-			fprintf(fp, "DBPRE   QUOTE DELIMITED SIZE\n");
-			fprintf(fp, "DBPRE   %s DELIMITED SIZE\n", zwi+1);
-			fprintf(fp, "DBPRE   QUOTE DELIMITED SIZE\n");
-			fprintf(fplst, "DBPRE   QUOTE DELIMITED SIZE\n");
-			fprintf(fplst, "DBPRE   %s DELIMITED SIZE\n", zwi+1);
-			fprintf(fplst, "DBPRE   QUOTE DELIMITED SIZE\n");
-			fprintf(fp, "DBPRE   ' ' DELIMITED SIZE\n");
-			fprintf(fplst, "DBPRE   ' ' DELIMITED SIZE\n");
+			do_output("DBPRE   SQLCA-QUOTE DELIMITED SIZE");
+			sprintf(zwi2, "DBPRE   %s DELIMITED SIZE", zwi+1);
+			do_output(zwi2);
+			do_output("DBPRE   SQLCA-QUOTE DELIMITED SIZE");
+			do_output("DBPRE   ' ' DELIMITED SIZE");
 		}
 		else{
 			if(zwi[0]=='\''){
 				sprintf(zwi2, "'%s' ", zwi);
-				fprintf(fp, "DBPRE   '%s' DELIMITED SIZE\n", zwi2);
-				fprintf(fplst, "DBPRE   '%s' DELIMITED SIZE\n", zwi2);
+				sprintf(zwi, "DBPRE   '%s' DELIMITED SIZE", zwi2);
+				do_output(zwi);
 			}
 			else{
 				strcat(zwi, " ");
-				fprintf(fp, "DBPRE   '%s' DELIMITED SIZE\n", zwi);
-				fprintf(fplst, "DBPRE   '%s' DELIMITED SIZE\n", zwi);
+				sprintf(zwi2, "DBPRE   '%s' DELIMITED SIZE", zwi);
+				do_output(zwi2);
 			}
 		}
 	}
-	fprintf(fp, "DBPRE   INTO SQLCA-STATEMENT\n");
-	fprintf(fplst, "DBPRE   INTO SQLCA-STATEMENT\n");
-	fprintf(fp, "DBPRE   END-STRING\n");
-	fprintf(fplst, "DBPRE   END-STRING\n");
-
-	fprintf(fp, "DBPRE          CALL 'MySQL_query' USING SQLCA-STATEMENT\n");
-	fprintf(fp, "DBPRE          END-CALL\n");
-	fprintf(fp, "DBPRE          MOVE RETURN-CODE        TO SQLCODE\n");
-
-	fprintf(fplst, "DBPRE          CALL 'MySQL_query' USING SQLCA-STATEMENT\n");
-	fprintf(fplst, "DBPRE          END-CALL\n");
-	fprintf(fplst, "DBPRE          MOVE RETURN-CODE        TO SQLCODE\n");
+	do_output("DBPRE   INTO SQLCA-STATEMENT");
+	do_output("DBPRE   END-STRING");
+	do_output("DBPRE   CALL 'MySQL_query' USING SQLCA-STATEMENT");
+	do_output("DBPRE   END-CALL");
+	do_output("DBPRE   MOVE RETURN-CODE        TO SQLCODE");
 }
 /******************************************************************************/
 void parse_cursor_statement(FILE *fp, FILE *fplst, int idx)
@@ -733,7 +702,7 @@ void parse_cursor_statement(FILE *fp, FILE *fplst, int idx)
 	strcpy(statement, "");
 	strcpy(variables, "");
 	stage=0;
-	printf("parse_cursor_statement >%s<\n", cursor_container_tab[idx]);
+	//printf("parse_cursor_statement >%s<\n", cursor_container_tab[idx]);
 	for(t=1;;t++){
 		word(cursor_container_tab[idx], zwi, t);
 		//printf("parse.. zwi=>%s<\n", zwi);
@@ -768,89 +737,63 @@ void parse_cursor_statement(FILE *fp, FILE *fplst, int idx)
 		errorcnt++;
 		return;
 	}
-	printf("parse cursor: statement=>%s<\n", statement);
-	printf("parse cursor: open_cursor_line=>%s<\n", open_cursor_line);
+	//printf("parse cursor: statement=>%s<\n", statement);
+	//printf("parse cursor: open_cursor_line=>%s<\n", open_cursor_line);
 	z=1;
-	fprintf(fp, "DBPRE *  %s\n", open_cursor_line);
-	fprintf(fplst, "DBPRE *  %s\n", open_cursor_line);
-	fprintf(fp, "DBPRE       IF SQLCA-CURSOR-CTRL (%d) = 1\n", idx+1);
-	fprintf(fplst, "DBPRE       IF SQLCA-CURSOR-CTRL (%d) = 1\n", idx+1);
-	fprintf(fp, "DBPRE          SET DB-CURSOR-ALREADY-OPEN TO TRUE\n");
-	fprintf(fplst, "DBPRE          SET DB-CURSOR-ALREADY-OPEN TO TRUE\n");
-	fprintf(fp, "DBPRE          PERFORM DB-STATUS\n");
-	fprintf(fplst, "DBPRE          PERFORM DB-STATUS\n");
-	fprintf(fp, "DBPRE       END-IF\n");
-	fprintf(fplst, "DBPRE       END-IF\n");
-	fprintf(fp, "DBPRE       MOVE 1 TO SQLCA-CURSOR-CTRL (%d)\n", idx+1);
-	fprintf(fplst, "DBPRE       MOVE 1 TO SQLCA-CURSOR-CTRL (%d)\n", idx+1);
-	fprintf(fp, "DBPRE       MOVE LOW-VALUES TO SQLCA-STATEMENT\n");
-	fprintf(fplst, "DBPRE       MOVE LOW-VALUES TO SQLCA-STATEMENT\n");
+	sprintf(zwi, "DBPRE *  %s", open_cursor_line);
+	do_output(zwi);
+	sprintf(zwi, "DBPRE       IF SQLCA-CURSOR-CTRL (%d) = 1", idx+1);
+	do_output(zwi);
+	do_output("DBPRE          SET DB-CURSOR-ALREADY-OPEN TO TRUE");
+	do_output("DBPRE          PERFORM DB-STATUS");
+	do_output("DBPRE       END-IF\n");
+	sprintf(zwi, "DBPRE       MOVE 1 TO SQLCA-CURSOR-CTRL (%d)", idx+1);
+	do_output(zwi);
+	do_output("DBPRE       MOVE LOW-VALUES TO SQLCA-STATEMENT");
 	for(t=0;;t+=25){
 		if(t>strlen(statement)){
 			break;
 		}
 		strcpy(zwi, statement+t);
 		zwi[25]=0;
-		fprintf(fp, "DBPRE       MOVE '%s' TO SQLCA-STAT-LINE (%d)\n", zwi, z);
-		fprintf(fplst, "DBPRE       MOVE '%s' TO SQLCA-STAT-LINE (%d)\n", zwi, z);
+		sprintf(zwi2, "DBPRE       MOVE '%s' TO SQLCA-STAT-LINE (%d)", zwi, z);
+		do_output(zwi2);
 		z++;
 	}
-	fprintf(fp, "DBPRE       CALL 'MySQL_query' USING SQLCA-STATEMENT\n");
-	fprintf(fp, "DBPRE       END-CALL\n");
-	fprintf(fp, "DBPRE       MOVE RETURN-CODE TO SQLCODE\n");
-	fprintf(fplst, "DBPRE       CALL 'MySQL_query' USING SQLCA-STATEMENT\n");
-	fprintf(fplst, "DBPRE       END-CALL\n");
-	fprintf(fplst, "DBPRE       MOVE RETURN-CODE TO SQLCODE\n");
-	fprintf(fp, "DBPRE       IF DB-OK\n");
-	fprintf(fp, "DBPRE          CALL 'MySQL_use_result' USING SQLCA-RESULT (%d)\n", idx+1);
-	fprintf(fp, "DBPRE          END-CALL\n");
-	fprintf(fp, "DBPRE          IF SQLCA-RESULT (%d) = NULL\n", idx+1);
-	fprintf(fp, "DBPRE             MOVE 100 TO SQLCODE\n");
-	fprintf(fp, "DBPRE          ELSE\n");
-	fprintf(fp, "DBPRE             MOVE 0 TO SQLCODE\n");
-	fprintf(fp, "DBPRE          END-IF\n");
-	fprintf(fp, "DBPRE       END-IF\n");
-	fprintf(fplst, "DBPRE       IF DB-OK\n");
-	fprintf(fplst, "DBPRE          CALL 'MySQL_use_result' USING SQLCA-RESULT (%d)\n", idx+1);
-	fprintf(fplst, "DBPRE          END-CALL\n");
-	fprintf(fplst, "DBPRE          IF SQLCA-RESULT (%d) = NULL\n", idx+1);
-	fprintf(fplst, "DBPRE             MOVE 100 TO SQLCODE\n");
-	fprintf(fplst, "DBPRE          ELSE\n");
-	fprintf(fplst, "DBPRE             MOVE 0 TO SQLCODE\n");
-	fprintf(fplst, "DBPRE          END-IF\n");
-	fprintf(fplst, "DBPRE       END-IF\n");
-	fprintf(fp, "DBPRE       IF DB-OK\n");
+	do_output("DBPRE       CALL 'MySQL_query' USING SQLCA-STATEMENT");
+	do_output("DBPRE       END-CALL");
+	do_output("DBPRE       MOVE RETURN-CODE TO SQLCODE");
+	do_output("DBPRE       IF DB-OK");
+	sprintf(zwi, "DBPRE          CALL 'MySQL_use_result' USING SQLCA-RESULT (%d)", idx+1);
+	do_output(zwi);
+	do_output("DBPRE          END-CALL");
+	sprintf(zwi, "DBPRE          IF SQLCA-RESULT (%d) = NULL", idx+1);
+	do_output(zwi);
+	do_output("DBPRE             MOVE 100 TO SQLCODE");
+	do_output("DBPRE          ELSE");
+	do_output("DBPRE             MOVE 0 TO SQLCODE");
+	do_output("DBPRE          END-IF");
+	do_output("DBPRE       END-IF");
+	do_output("DBPRE       IF DB-OK");
 	// fetch_fields fetches the field NAMES, not the content
 	//fprintf(fp, "DBPRE          CALL 'MySQL_fetch_fields' USING SQLCA-RESULT (%d)\n", idx+1);
-	fprintf(fp, "DBPRE          CALL 'MySQL_fetch_row' USING SQLCA-RESULT (%d)\n", idx+1);
+	sprintf(zwi, "DBPRE          CALL 'MySQL_fetch_row' USING SQLCA-RESULT (%d)", idx+1);
+	do_output(zwi);
 	for(t=1;;t++){
 		word(variables, zwi, t);
 		if(strlen(zwi)==0) break;
-		fprintf(fp, "DBPRE                                          %s\n", zwi);
+		sprintf(zwi2, "DBPRE                                          %s", zwi);
+		do_output(zwi2);
 	}
-	fprintf(fp, "DBPRE          END-CALL\n");
-	fprintf(fp, "DBPRE          IF SQLCA-RESULT (%d) = NULL\n", idx+1);
-	fprintf(fp, "DBPRE             MOVE 100 TO SQLCODE\n");
-	fprintf(fp, "DBPRE          ELSE\n");
-	fprintf(fp, "DBPRE             MOVE 0 TO SQLCODE\n");
-	fprintf(fp, "DBPRE          END-IF\n");
-	fprintf(fp, "DBPRE       END-IF\n");
-	fprintf(fplst, "DBPRE       IF DB-OK\n");
-	//fprintf(fplst, "DBPRE          CALL 'MySQL_fetch_fields' USING SQLCA-RESULT (%d)\n", idx+1);
-	fprintf(fplst, "DBPRE          CALL 'MySQL_fetch_row' USING SQLCA-RESULT (%d)\n", idx+1);
-	for(t=1;;t++){
-		word(variables, zwi, t);
-		if(strlen(zwi)==0) break;
-		fprintf(fplst, "DBPRE                                          %s\n", zwi);
-	}
-	fprintf(fplst, "DBPRE          END-CALL\n");
-	fprintf(fplst, "DBPRE          IF SQLCA-RESULT (%d) = NULL\n", idx+1);
-	fprintf(fplst, "DBPRE             MOVE 100 TO SQLCODE\n");
-	fprintf(fplst, "DBPRE          ELSE\n");
-	fprintf(fplst, "DBPRE             MOVE 0 TO SQLCODE\n");
-	fprintf(fplst, "DBPRE          END-IF\n");
-	fprintf(fplst, "DBPRE       END-IF\n");
-	//printf("variables=>%s<\n", variables);
+	do_output("DBPRE          END-CALL");
+	sprintf(zwi, "DBPRE          IF SQLCA-RESULT (%d) = NULL", idx+1);
+	do_output(zwi);
+	do_output("DBPRE             MOVE 100 TO SQLCODE");
+	do_output("DBPRE          ELSE");
+	do_output("DBPRE             MOVE 0 TO SQLCODE");
+	do_output("DBPRE          END-IF");
+	do_output("DBPRE       END-IF");
+//printf("variables=>%s<\n", variables);
 }
 /******************************************************************************/
 void parse_select_statement(FILE *fp, FILE *fplst)
@@ -901,74 +844,53 @@ void parse_select_statement(FILE *fp, FILE *fplst)
 		errorcnt++;
 		return;
 	}
+	
 	//printf("statement=>%s<\n", statement);
 	z=1;
-	fprintf(fp, "DBPRE       MOVE LOW-VALUES TO SQLCA-STATEMENT\n");
+	do_output("DBPRE       MOVE LOW-VALUES TO SQLCA-STATEMENT");
 	for(t=0;;t+=25){
 		if(t>strlen(statement)){
 			break;
 		}
 		strcpy(zwi, statement+t);
 		zwi[25]=0;
-		fprintf(fp, "DBPRE       MOVE '%s' TO SQLCA-STAT-LINE (%d)\n", zwi, z);
-		fprintf(fplst, "DBPRE       MOVE '%s' TO SQLCA-STAT-LINE (%d)\n", zwi, z);
+		sprintf(zwi2, "DBPRE       MOVE '%s' TO SQLCA-STAT-LINE (%d)", zwi, z);
+		do_output(zwi2);
 		z++;
 	}
-	fprintf(fp, "DBPRE       CALL 'MySQL_query' USING SQLCA-STATEMENT\n");
-	fprintf(fp, "DBPRE       END-CALL\n");
-	fprintf(fp, "DBPRE       MOVE RETURN-CODE TO SQLCODE\n");
-	fprintf(fplst, "DBPRE       CALL 'MySQL_query' USING SQLCA-STATEMENT\n");
-	fprintf(fplst, "DBPRE       END-CALL\n");
-	fprintf(fplst, "DBPRE       MOVE RETURN-CODE TO SQLCODE\n");
-	fprintf(fp, "DBPRE       IF DB-OK\n");
-	fprintf(fp, "DBPRE          CALL 'MySQL_use_result' USING SQLCA-RESULT (%d)\n", MAX_CURSORS+1);
-	fprintf(fp, "DBPRE          END-CALL\n");
-	fprintf(fp, "DBPRE          IF SQLCA-RESULT (%d) = NULL\n", MAX_CURSORS+1);
-	fprintf(fp, "DBPRE             MOVE 100 TO SQLCODE\n");
-	fprintf(fp, "DBPRE          ELSE\n");
-	fprintf(fp, "DBPRE             MOVE 0 TO SQLCODE\n");
-	fprintf(fp, "DBPRE          END-IF\n");
-	fprintf(fp, "DBPRE       END-IF\n");
-	fprintf(fplst, "DBPRE       IF DB-OK\n");
-	fprintf(fplst, "DBPRE          CALL 'MySQL_use_result' USING SQLCA-RESULT (%d)\n", MAX_CURSORS+1);
-	fprintf(fplst, "DBPRE          END-CALL\n");
-	fprintf(fplst, "DBPRE          IF SQLCA-RESULT (%d) = NULL\n", MAX_CURSORS+1);
-	fprintf(fplst, "DBPRE             MOVE 100 TO SQLCODE\n");
-	fprintf(fplst, "DBPRE          ELSE\n");
-	fprintf(fplst, "DBPRE             MOVE 0 TO SQLCODE\n");
-	fprintf(fplst, "DBPRE          END-IF\n");
-	fprintf(fplst, "DBPRE       END-IF\n");
-	fprintf(fp, "DBPRE       IF DB-OK\n");
+	do_output("DBPRE       CALL 'MySQL_query' USING SQLCA-STATEMENT");
+	do_output("DBPRE       END-CALL");
+	do_output("DBPRE       MOVE RETURN-CODE TO SQLCODE");
+	do_output("DBPRE       IF DB-OK");
+	sprintf(zwi, "DBPRE          CALL 'MySQL_use_result' USING SQLCA-RESULT (%d)", MAX_CURSORS+1);
+	do_output(zwi);
+	do_output("DBPRE          END-CALL");
+	sprintf(zwi, "DBPRE          IF SQLCA-RESULT (%d) = NULL", MAX_CURSORS+1);
+	do_output(zwi);
+	do_output("DBPRE             MOVE 100 TO SQLCODE");
+	do_output("DBPRE          ELSE");
+	do_output("DBPRE             MOVE 0 TO SQLCODE");
+	do_output("DBPRE          END-IF");
+	do_output("DBPRE       END-IF");
+	do_output("DBPRE       IF DB-OK");
 	// fetch_fields fetches the field NAMES, not the content
 	//fprintf(fp, "DBPRE          CALL 'MySQL_fetch_fields' USING SQLCA-RESULT (%d)\n", MAX_CURSORS+1);
-	fprintf(fp, "DBPRE          CALL 'MySQL_fetch_row' USING SQLCA-RESULT (%d)\n", MAX_CURSORS+1);
+	sprintf(zwi, "DBPRE          CALL 'MySQL_fetch_row' USING SQLCA-RESULT (%d)", MAX_CURSORS+1);
+	do_output(zwi);
 	for(t=1;;t++){
 		word(variables, zwi, t);
 		if(strlen(zwi)==0) break;
-		fprintf(fp, "DBPRE                                          %s\n", zwi);
+		sprintf(zwi2, "DBPRE                                          %s", zwi);
+		do_output(zwi2);
 	}
-	fprintf(fp, "DBPRE          END-CALL\n");
-	fprintf(fp, "DBPRE          IF SQLCA-RESULT (%d) = NULL\n", MAX_CURSORS+1);
-	fprintf(fp, "DBPRE             MOVE 100 TO SQLCODE\n");
-	fprintf(fp, "DBPRE          ELSE\n");
-	fprintf(fp, "DBPRE             MOVE 0 TO SQLCODE\n");
-	fprintf(fp, "DBPRE          END-IF\n");
-	fprintf(fp, "DBPRE       END-IF\n");
-	fprintf(fplst, "DBPRE       IF DB-OK\n");
-	//fprintf(fplst, "DBPRE          CALL 'MySQL_fetch_fields' USING SQLCA-RESULT (%d)\n", MAX_CURSORS+1);
-	fprintf(fplst, "DBPRE          CALL 'MySQL_fetch_row' USING SQLCA-RESULT (%d)\n", MAX_CURSORS+1);
-	for(t=1;;t++){
-		word(variables, zwi, t);
-		if(strlen(zwi)==0) break;
-		fprintf(fplst, "DBPRE                                          %s\n", zwi);
-	}
-	fprintf(fplst, "DBPRE          END-CALL\n");
-	fprintf(fplst, "DBPRE          IF SQLCA-RESULT (%d)= NULL\n", MAX_CURSORS+1);
-	fprintf(fplst, "DBPRE             MOVE 100 TO SQLCODE\n");
-	fprintf(fplst, "DBPRE          ELSE\n");
-	fprintf(fplst, "DBPRE             MOVE 0 TO SQLCODE\n");
-	fprintf(fplst, "DBPRE          END-IF\n");
-	fprintf(fplst, "DBPRE       END-IF\n");
+	do_output("DBPRE          END-CALL");
+	sprintf(zwi, "DBPRE          IF SQLCA-RESULT (%d) = NULL", MAX_CURSORS+1);
+	do_output(zwi);
+	do_output("DBPRE             MOVE 100 TO SQLCODE");
+	do_output("DBPRE          ELSE");
+	do_output("DBPRE             MOVE 0 TO SQLCODE");
+	do_output("DBPRE          END-IF");
+	do_output("DBPRE       END-IF");
 	//printf("variables=>%s<\n", variables);
 }
 /******************************************************************************/
@@ -982,13 +904,17 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 	char w4[256];
 	char w5[256];
 	char w6[256];
+	char w7[256];
+	char w8[256];
+	char w9[256];
 	int f;
 	int t, i;
 	int offset;
 	char zwioffset[256];
+	int continue_parsing;
 
 	if(freestyle==FALSE){
-		if(line[6]=='*'){
+		if(fullline[6]=='*'){
 			return(FALSE);
 		}
 	}
@@ -1001,33 +927,31 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 	word(line, w2, 2);
 	word(line, w3, 3);
 	word(line, w4, 4);
+	word(line, w5, 5);
+	word(line, w6, 6);
+	word(line, w7, 6);
+	word(line, w8, 6);
+	word(line, w9, 6);
 
 	ucase(w1);
 	ucase(w2);
 	ucase(w3);
 	ucase(w4);
+	ucase(w5);
+	ucase(w6);
+	ucase(w7);
+	ucase(w8);
+	ucase(w9);
 
 	// remove AUTHOR. and DATE-WRITEN. OpenCOBOL cant handle that
 	if(strcmp(w1, "AUTHOR.")==0){
-		if(freestyle==TRUE){
-			sprintf(zwi, "//%s", fullline);
-		}
-		else{
-			sprintf(zwi, "DBPRE *%s", line);
-		}
-		fprintf(fp, "%s\n", zwi);
-		fprintf(fplst, "%s\n", zwi);
+		sprintf(zwi, "DBPRE *%s", line);
+		do_output(zwi);
 		return(TRUE);
 	}
 	if(strcmp(w1, "DATE-WRITTEN.")==0){
-		if(freestyle==TRUE){
-			sprintf(zwi, "//%s", fullline);
-		}
-		else{
-			sprintf(zwi, "DBPRE *%s", line);
-		}
-		fprintf(fp, "%s\n", zwi);
-		fprintf(fplst, "%s\n", zwi);
+		sprintf(zwi, "DBPRE *%s", line);
+		do_output(zwi);
 		return(TRUE);
 	}
 
@@ -1047,20 +971,27 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 	}
 	if(strcmp(w1, "EXEC")==0 &&
 	   strcmp(w2, "SQL")==0){
-		if(strlen(w3)>0){
-			fprintf(fp, "%s\n", line);
-			fprintf(fplst, "%s\n", line);
-			fprintf(fplst, "SYNTAX ERROR: invalid parameter >%s<\n", w3);
+		continue_parsing=FALSE;
+		if(strlen(w3)>0){ // we have commands at the same line as EXEC SQL?
+			strcpy(w1, w3); // okay, overwrite EXEC SQL
+			strcpy(w2, w4);
+			strcpy(w3, w5);
+			strcpy(w4, w6);
+			strcpy(w5, w7);
+			strcpy(w6, w8);
+			strcpy(w7, w9);
+			strcpy(w8, "");
+			strcpy(w9, "");
+			sprintf(line, "%s %s %s %s %s %s %s", w1, w2, w3, w4, w5, w6, w7);
+			continue_parsing=TRUE; // and continue parsing with these commands
+		}
+		if(execsqlmode==TRUE){
+			fprintf(fp, "%s\n", fullline);
+			fprintf(fplst, "%s\n", fullline);
+			fprintf(fplst, "SYNTAX ERROR: nested EXEC SQL\n");
 			errorcnt++;
 			return(TRUE);
 		}
-		//if(execsqlmode==TRUE){
-		//	fprintf(fp, "%s\n", fullline);
-		//	fprintf(fplst, "%s\n", fullline);
-		//	fprintf(fplst, "SYNTAX ERROR: nested EXEC SQL\n");
-		//	errorcnt++;
-		//	return(TRUE);
-		//}
 		execsqlmode=TRUE;
 		for(t=0; t<80; t++){
 			if(line[t]!=' ') break;
@@ -1073,30 +1004,21 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 		}
 		zwioffset[i]=0;
 		if(proceduremode==TRUE){
-			if(freestyle==TRUE){
-				sprintf(zwi, "MOVE %d             TO SQLCA-SEQUENCE", sequencecnt);
-			}
-			else{
-				sprintf(zwi, "DBPRE  %sMOVE %d             TO SQLCA-SEQUENCE", 
+			sprintf(zwi, "DBPRE  %sMOVE %d             TO SQLCA-SEQUENCE", 
 								  zwioffset, sequencecnt);
-			}
+			do_output(zwi);
 			sequencecnt++;
-			fprintf(fp, "%s\n", zwi);
-			fprintf(fplst, "%s\n", zwi);
 		}
-		if(freestyle==TRUE){
-			sprintf(zwi, "//%s", line);
+		strcpy(zwi, fullline);
+		zwi[6]='*';
+		do_output(zwi);
+		if(continue_parsing==FALSE){ // are there still sql commands to handle?
+			return(TRUE);             // no commands? then bye..
 		}
-		else{
-			strcpy(zwi, fullline);
-			zwi[6]='*';
-		}
-		fprintf(fp, "%s\n", zwi);
-		fprintf(fplst, "%s\n", zwi);
-		return(TRUE);
 	}
 
-	if(strcmp(w1, "END-EXEC.")==0){
+	if(strcmp(w1, "END-EXEC.")==0 ||
+		strcmp(w1, "END-EXEC")==0){
 		if(strlen(w2)>0){
 			fprintf(fp, "%s\n", line);
 			fprintf(fplst, "%s\n", line);
@@ -1104,8 +1026,8 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 			errorcnt++;
 			return(TRUE);
 		}
-		fprintf(fp, "DBPRE *%s\n", line);
-		fprintf(fplst, "DBPRE *%s\n", line);
+		sprintf(zwi, "DBPRE *%s", line);
+		do_output(zwi);
 		if(execsqlcount<1){
 			fprintf(fp, "%s\n", fullline);
 			fprintf(fplst, "%s\n", fullline);
@@ -1117,7 +1039,7 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 		execsqlcount--;
 		if(collect_cursor_statement==TRUE){
 			trim(collect_container);
-			printf("cursor: collect_container=>%s<\n", collect_container);
+			// printf("cursor: collect_container=>%s<\n", collect_container);
 			cursor_container_tab[cursorcnt]=malloc(strlen(collect_container)+1);
 			strcpy(cursor_container_tab[cursorcnt], collect_container);
 			strcpy(cursor_name_tab[cursorcnt], collect_cursor_name);
@@ -1176,8 +1098,14 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 		   collect_fetch_statement==TRUE){
 			strcat(collect_container, " ");
 			strcat(collect_container, line);
-			fprintf(fp, "DBPRE *%s\n", line);
-			fprintf(fplst, "DBPRE *%s\n", line);
+			if(continue_parsing==TRUE){ // we printed this line already
+				// printf("skipping line >%s<\n", line);
+			}
+			else{
+				sprintf(zwi, "DBPRE *%s", line);
+				do_output(zwi);
+				continue_parsing=FALSE;
+			}
 			return(TRUE);
 		}
 		//printf("2:execsqlmode=TRUE: w1=>%s< w2=>%s<\n", w1, w2);
@@ -1222,7 +1150,7 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 				//printf("replace_old=>%s< replace_new=>%s<\n",replace_old, replace_new);
 			}
 			fpincnt++;
-			printf("1) fpincnt=%d\n", fpincnt);
+			// printf("1) fpincnt=%d\n", fpincnt);
 			if(w2[strlen(w2)-1]=='.'){
 				w2[strlen(w2)-1]=0;
 			}
@@ -1236,15 +1164,9 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 				fprintf(fplst, "SYNTAX ERROR: could not include file >%s<.\n", w2);
 				return(TRUE);
 			}
-			if(freestyle==TRUE){
-				sprintf(zwi, "//%s", line);
-			}
-			else{
-				strcpy(zwi, fullline);
-				zwi[6]='*';
-			}
-			fprintf(fp, "%s\n", zwi);
-			fprintf(fplst, "%s\n", zwi);
+			strcpy(zwi, fullline);
+			zwi[6]='*';
+			do_output(zwi);
 			execsqlmode=FALSE; // or error detection wont work!
 			return(TRUE);
 		} // INCLUDE...
@@ -1266,21 +1188,15 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 				errorcnt++;
 				return(TRUE);
 			}
-			if(freestyle==TRUE){
-				sprintf(zwi, "//%s", line);
-			}
-			else{
-				strcpy(zwi, fullline);
-				zwi[6]='*';
-			}
-			fprintf(fp, "%s\n", zwi);
-			fprintf(fplst, "%s\n", zwi);
-		 	fprintf(fp,"DBPRE %s CALL \"MySQL_init\"  USING SQLCA-CID\n",zwioffset);
-		 	fprintf(fp, "DBPRE %s END-CALL\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s CALL \"MySQL_init\"  USING SQLCA-CID\n",zwioffset);
-		 	fprintf(fplst, "DBPRE %s END-CALL\n",zwioffset);
-		 	fprintf(fplst, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE\n",zwioffset);
+			strcpy(zwi, fullline);
+			zwi[6]='*';
+			do_output(zwi);
+		 	sprintf(zwi,"DBPRE %s CALL \"MySQL_init\"  USING SQLCA-CID",zwioffset);
+			do_output(zwi);
+		 	sprintf(zwi, "DBPRE %s END-CALL", zwioffset);
+			do_output(zwi);
+		 	sprintf(zwi, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE", zwioffset);
+			do_output(zwi);
 			return(TRUE);
 		} // INIT DB...
 		if(strcmp(w1, "CLOSE")==0 && strcmp(w2, "DB")==0){
@@ -1301,21 +1217,15 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 				errorcnt++;
 				return(TRUE);
 			}
-			if(freestyle==TRUE){
-				sprintf(zwi, "//%s", line);
-			}
-			else{
-				strcpy(zwi, fullline);
-				zwi[6]='*';
-			}
-			fprintf(fp, "%s\n", zwi);
-			fprintf(fplst, "%s\n", zwi);
-		 	fprintf(fp,"DBPRE %s CALL \"MySQL_close\"\n",zwioffset);
-		 	fprintf(fp, "DBPRE %s END-CALL\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s CALL \"MySQL_close\"\n",zwioffset);
-		 	fprintf(fplst, "DBPRE %s END-CALL\n",zwioffset);
-		 	fprintf(fplst, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE\n",zwioffset);
+			strcpy(zwi, fullline);
+			zwi[6]='*';
+			do_output(zwi);
+		 	sprintf(zwi,"DBPRE %s CALL \"MySQL_close\"\n",zwioffset);
+			do_output(zwi);
+			sprintf(zwi, "DBPRE %s END-CALL\n", zwioffset);
+			do_output(zwi);
+			sprintf(zwi, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE\n", zwioffset);
+			do_output(zwi);
 			return(TRUE);
 		} // CLOSE DB...
 		if(strcmp(w1, "CLOSE")==0 && strcmp(w2, "DB")!=0){
@@ -1335,27 +1245,16 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 				exec_sql_error=TRUE;
 				return(TRUE);
 			}
-			if(freestyle==TRUE){
-				sprintf(zwi, "//%s", line);
-			}
-			else{
-				strcpy(zwi, fullline);
-				zwi[6]='*';
-			}
-			fprintf(fp, "%s\n", zwi);
-			fprintf(fplst, "%s\n", zwi);
-			//fprintf(fp, "DBPRE *  %s\n", open_cursor_line);
-			//fprintf(fplst, "DBPRE *  %s\n", open_cursor_line);
-			fprintf(fp, "DBPRE       IF SQLCA-CURSOR-CTRL (%d) = 0\n", t+1);
-			fprintf(fplst, "DBPRE       IF SQLCA-CURSOR-CTRL (%d) = 0\n", t+1);
-			fprintf(fp, "DBPRE          SET DB-CURSOR-NOT-OPEN TO TRUE\n");
-			fprintf(fplst, "DBPRE          SET DB-CURSOR-NOT-OPEN TO TRUE\n");
-			fprintf(fp, "DBPRE          PERFORM DB-STATUS\n");
-			fprintf(fplst, "DBPRE          PERFORM DB-STATUS\n");
-			fprintf(fp, "DBPRE       END-IF\n");
-			fprintf(fplst, "DBPRE       END-IF\n");
-			fprintf(fp, "DBPRE       MOVE 0 TO SQLCA-CURSOR-CTRL (%d)\n", t+1);
-			fprintf(fplst, "DBPRE       MOVE 0 TO SQLCA-CURSOR-CTRL (%d)\n", t+1);
+			strcpy(zwi, fullline);
+			zwi[6]='*';
+			do_output(zwi);
+			sprintf(zwi, "DBPRE       IF SQLCA-CURSOR-CTRL (%d) = 0", t+1);
+			do_output(zwi);
+			do_output("DBPRE          SET DB-CURSOR-NOT-OPEN TO TRUE");
+			do_output("DBPRE          PERFORM DB-STATUS");
+			do_output("DBPRE       END-IF");
+			sprintf(zwi, "DBPRE       MOVE 0 TO SQLCA-CURSOR-CTRL (%d)", t+1);
+			do_output(zwi);
 			return(TRUE);
 		} // CLOSE CURSOR...
 
@@ -1377,33 +1276,27 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 				errorcnt++;
 				return(TRUE);
 			}
-			if(freestyle==TRUE){
-				sprintf(zwi, "//%s", line);
-			}
-			else{
-				strcpy(zwi, fullline);
-				zwi[6]='*';
-			}
-			fprintf(fp, "%s\n", zwi);
-			fprintf(fplst, "%s\n", zwi);
-		 	fprintf(fp, "DBPRE %s CALL \"MySQL_real_connect\" USING\n",zwioffset);
-		 	fprintf(fp, "DBPRE %s                           SQLCA-HOST\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s                           SQLCA-USER\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s                           SQLCA-PASSWD\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s                           SQLCA-DBNAME\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s                           SQLCA-PORT\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s                           SQLCA-SOCKET\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s END-CALL\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s CALL \"MySQL_real_connect\" USING\n",zwioffset);
-		 	fprintf(fplst, "DBPRE %s                           SQLCA-HOST\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s                           SQLCA-USER\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s                           SQLCA-PASSWD\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s                           SQLCA-DBNAME\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s                           SQLCA-PORT\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s                           SQLCA-SOCKET\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s END-CALL\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE\n", zwioffset);
+			strcpy(zwi, fullline);
+			zwi[6]='*';
+			do_output(zwi);
+	 		sprintf(zwi, "DBPRE %s CALL \"MySQL_real_connect\" USING",zwioffset);
+			do_output(zwi);
+	 		sprintf(zwi, "DBPRE %s                           SQLCA-HOST", zwioffset);
+			do_output(zwi);
+	 		sprintf(zwi, "DBPRE %s                           SQLCA-USER", zwioffset);
+			do_output(zwi);
+	 		sprintf(zwi, "DBPRE %s                           SQLCA-PASSWD", zwioffset);
+			do_output(zwi);
+	 		sprintf(zwi, "DBPRE %s                           SQLCA-DBNAME", zwioffset);
+			do_output(zwi);
+	 		sprintf(zwi, "DBPRE %s                           SQLCA-PORT", zwioffset);
+			do_output(zwi);
+	 		sprintf(zwi, "DBPRE %s                           SQLCA-SOCKET", zwioffset);
+			do_output(zwi);
+	 		sprintf(zwi, "DBPRE %s END-CALL", zwioffset);
+			do_output(zwi);
+	 		sprintf(zwi, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE", zwioffset);
+			do_output(zwi);
 			return(TRUE);
 		} // CONNECT DB...
 
@@ -1425,27 +1318,21 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 				errorcnt++;
 				return(TRUE);
 			}
-			if(freestyle==TRUE){
-				sprintf(zwi, "//%s", line);
-			}
-			else{
-				strcpy(zwi, fullline);
-				zwi[6]='*';
-			}
-			fprintf(fp, "%s\n", zwi);
-			fprintf(fplst, "%s\n", zwi);
-		 	fprintf(fp,"DBPRE %s CALL \"MySQL_selectdb\" USING SQLCA-DBNAME\n",zwioffset);
-		 	fprintf(fp, "DBPRE %s END-CALL\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s IF RETURN-CODE NOT = 0 THEN\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s    PERFORM DB-STATUSR\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s END-IF\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s CALL \"MySQL_selectdb\" USING SQLCA-DBNAME\n",zwioffset);
-		 	fprintf(fplst, "DBPRE %s END-CALL\n",zwioffset);
-		 	fprintf(fplst, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE\n",zwioffset);
-		 	fprintf(fplst, "DBPRE %s IF RETURN-CODE NOT = 0 THEN\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s    PERFORM DB-STATUS\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s END-IF\n", zwioffset);
+			strcpy(zwi, fullline);
+			zwi[6]='*';
+			do_output(zwi);
+		 	sprintf(zwi,"DBPRE %s CALL \"MySQL_selectdb\" USING SQLCA-DBNAME",zwioffset);
+			do_output(zwi);
+		 	sprintf(zwi, "DBPRE %s END-CALL", zwioffset);
+			do_output(zwi);
+		 	sprintf(zwi, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE", zwioffset);
+			do_output(zwi);
+		 	sprintf(zwi, "DBPRE %s IF RETURN-CODE NOT = 0 THEN", zwioffset);
+			do_output(zwi);
+		 	sprintf(zwi, "DBPRE %s    PERFORM DB-STATUSR", zwioffset);
+			do_output(zwi);
+		 	sprintf(zwi, "DBPRE %s END-IF", zwioffset);
+			do_output(zwi);
 			return(TRUE);
 		} // SELECT DB...
 
@@ -1467,27 +1354,20 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 				errorcnt++;
 				return(TRUE);
 			}
-			if(freestyle==TRUE){
-				sprintf(zwi, "//%s", line);
-			}
-			else{
-				strcpy(zwi, fullline);
-				zwi[6]='*';
-			}
-			fprintf(fp, "%s\n", zwi);
-			fprintf(fplst, "%s\n", zwi);
-		 	fprintf(fp,"DBPRE %s CALL \"MySQL_commit\"\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s END-CALL\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s IF RETURN-CODE NOT = 0 THEN\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s    PERFORM DB-STATUS\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s END-IF\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s CALL \"MySQL_commit\"\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s END-CALL\n",zwioffset);
-		 	fprintf(fplst, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE\n",zwioffset);
-		 	fprintf(fplst, "DBPRE %s IF RETURN-CODE NOT = 0 THEN\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s    PERFORM DB-STATUS\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s END-IF\n", zwioffset);
+			strcpy(zwi, fullline);
+			zwi[6]='*';
+			do_output(zwi);
+		 	sprintf(zwi,"DBPRE %s CALL \"MySQL_commit\"", zwioffset);
+			do_output(zwi);
+		 	sprintf(zwi, "DBPRE %s END-CALL\n", zwioffset);
+			do_output(zwi);
+		 	sprintf(zwi, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE", zwioffset);
+			do_output(zwi);
+		 	sprintf(zwi, "DBPRE %s IF RETURN-CODE NOT = 0 THEN", zwioffset);
+			do_output(zwi);
+		 	sprintf(zwi, "DBPRE %s    PERFORM DB-STATUS", zwioffset);
+			do_output(zwi);
+		 	sprintf(zwi, "DBPRE %s END-IF", zwioffset);
 			return(TRUE);
 		} // COMMIT
 
@@ -1509,28 +1389,16 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 				errorcnt++;
 				return(TRUE);
 			}
-			if(freestyle==TRUE){
-				sprintf(zwi, "//%s", line);
-			}
-			else{
-				strcpy(zwi, fullline);
-				zwi[6]='*';
-			}
-			fprintf(fp, "%s\n", zwi);
-			fprintf(fplst, "%s\n", zwi);
-		 	fprintf(fp,"DBPRE %s CALL \"MySQL_rollback\"\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s END-CALL\n", zwioffset);
-		 	fprintf(fp, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE\n", zwioffset);
+			strcpy(zwi, fullline);
+			zwi[6]='*';
+			do_output(zwi);
+		 	sprintf(zwi,"DBPRE %s CALL \"MySQL_rollback\"", zwioffset);
+			do_output(zwi);
+		 	sprintf(zwi, "DBPRE %s END-CALL", zwioffset);
+			do_output(zwi);
+		 	sprintf(zwi, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE", zwioffset);
+			do_output(zwi);
 			// dont call DB-STATUS, this will cause a recursion!!
-		 	//fprintf(fp, "DBPRE %s IF RETURN-CODE NOT = 0 THEN\n", zwioffset);
-		 	//fprintf(fp, "DBPRE %s    PERFORM DB-STATUS\n", zwioffset);
-		 	//fprintf(fp, "DBPRE %s END-IF\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s CALL \"MySQL_rollback\"\n", zwioffset);
-		 	fprintf(fplst, "DBPRE %s END-CALL\n",zwioffset);
-		 	fprintf(fplst, "DBPRE %s MOVE RETURN-CODE    TO SQLCODE\n",zwioffset);
-		 	//fprintf(fplst, "DBPRE %s IF RETURN-CODE NOT = 0 THEN\n", zwioffset);
-		 	//fprintf(fplst, "DBPRE %s    PERFORM DB-STATUS\n", zwioffset);
-		 	//fprintf(fplst, "DBPRE %s END-IF\n", zwioffset);
 			return(TRUE);
 		} // ROLLBACK
 
@@ -1559,8 +1427,8 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 			// ignore the DECLARE .. CURSOR line!!!
 			//strcpy(collect_container, line);
 			strcpy(collect_container, "");
-			fprintf(fp, "DBPRE *%s\n", line);
-			fprintf(fplst, "DBPRE *%s\n", line);
+			sprintf(zwi, "DBPRE *%s", line);
+			do_output(zwi);
 			strcpy(collect_cursor_name, w2);
 			return(TRUE);
 		} // collect DECLARE ... CURSOR FOR statement..
@@ -1585,7 +1453,7 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 				return(TRUE);
 			}
 			strcpy(open_cursor_line, line);
-			puts("vor parse_cursor_statement.......");
+			// puts("vor parse_cursor_statement.......");
 			parse_cursor_statement(fp, fplst, t);
 			return(TRUE);
 		} // collect OPEN ... CURSOR statement..
@@ -1593,57 +1461,56 @@ int do_handle_input_line(FILE *fp, FILE *fplst, unsigned char *line,
 		if(strcmp(w1, "SELECT")==0 && strcmp(w2, "DB")!=0){
 			collect_select_statement=TRUE;
 			strcpy(collect_container, line);
-			fprintf(fp, "DBPRE *%s\n", line);
-			fprintf(fplst, "DBPRE *%s\n", line);
+			if(continue_parsing==FALSE){
+				sprintf(zwi, "DBPRE *%s", line);
+				do_output(zwi);
+			}
 			return(TRUE);
 		} // collect SELECT statement..
 
 		if(strcmp(w1, "DELETE")==0){
 			collect_delete_statement=TRUE;
 			strcpy(collect_container, line);
-			fprintf(fp, "DBPRE *%s\n", line);
-			fprintf(fplst, "DBPRE *%s\n", line);
+			if(continue_parsing==FALSE){
+				sprintf(zwi, "DBPRE *%s", line);
+				do_output(zwi);
+			}
 			return(TRUE);
 		} // collect DELETE statement..
 
 		if(strcmp(w1, "UPDATE")==0){
 			collect_update_statement=TRUE;
 			strcpy(collect_container, line);
-			fprintf(fp, "DBPRE *%s\n", line);
-			fprintf(fplst, "DBPRE *%s\n", line);
+			if(continue_parsing==FALSE){
+				sprintf(zwi, "DBPRE *%s", line);
+				do_output(zwi);
+			}
 			return(TRUE);
 		} // collect UPDATE statement..
 		if(strcmp(w1, "INSERT")==0){
 			collect_insert_statement=TRUE;
 			strcpy(collect_container, line);
-			fprintf(fp, "DBPRE *%s\n", line);
-			fprintf(fplst, "DBPRE *%s\n", line);
+			if(continue_parsing==FALSE){
+				sprintf(zwi, "DBPRE *%s", line);
+				do_output(zwi);
+			}
 			return(TRUE);
 		} // collect INSERT statement..
 
 		//printf("w1=>%s< w2=>%s<\n", w1, w2);
-		/******************************************************
-		if(strcmp(w1, "FETCH")==0 && strcmp(w2, "RESULT")==0){
-			//printf("fetch result<=================================\n");
-			collect_fetch_statement=TRUE;
-			strcpy(collect_container, line);
-			fprintf(fp, "DBPRE *%s\n", line);
-			fprintf(fplst, "DBPRE *%s\n", line);
-			return(TRUE);
-		} // collect FETCH statement..
-		*******************************************************/
 		if(strcmp(w1, "FETCH")==0 && strlen(w2)>0){
 			//printf("fetch cursor<=================================\n");
 			collect_fetch_statement=TRUE;
 			strcpy(fetch_cursor_name, w2);
 			strcpy(collect_container, line);
-			fprintf(fp, "DBPRE *%s\n", line);
-			fprintf(fplst, "DBPRE *%s\n", line);
+			if(continue_parsing==FALSE){
+				sprintf(zwi, "DBPRE *%s", line);
+				do_output(zwi);
+			}
 			return(TRUE);
 		} // collect FETCH statement..
 
-		fprintf(fp, "%s\n", fullline);
-		fprintf(fplst, "%s\n", fullline);
+		do_output(fullline);
 		fprintf(fplst, "SYNTAX ERROR: unknown command >%s<\n", w1);
 		errorcnt++;
 		return(TRUE);
@@ -1671,8 +1538,7 @@ void handle_input_line(FILE *fp, FILE *fplst, unsigned char *line)
 	}
 
 	if(rc==FALSE){
-		fprintf(fp, "%s\n", line);
-		fprintf(fplst, "%s\n", line);
+		do_output(line);
 	}
 }
 /******************************************************************************/
@@ -1697,8 +1563,8 @@ int main(int argc, char **argv)
 
 	handle_options(argc, argv);
 
-	puts("dbpre 1.0");
-	puts("=========");
+	printf("dbpre %s\n", DBPREVERSIONLONG);
+	puts("======================");
 	sprintf(infile, "%s.scb", infilename);
 	sprintf(outfile, "%s.cob", infilename);
 	sprintf(lstfile, "%s.lst", infilename);
@@ -1735,7 +1601,7 @@ int main(int argc, char **argv)
 	fprintf(fplst, "------*-------------------------------------------------------------------------\n");
 	for(;;){
 		if(read_line(fpin[fpincnt], line)==EOF){
-			printf("2) fpincnt=%d\n", fpincnt);
+			// printf("2) fpincnt=%d\n", fpincnt);
 			if(fpincnt>1){
 				fclose(fpin[fpincnt]);
 			}
@@ -1754,7 +1620,7 @@ int main(int argc, char **argv)
 	fprintf(fplst, "%d errors.\n", errorcnt);
 	fclose(fplst);
 	fclose(fpout);
-			printf("3) fpincnt=%d\n", fpincnt);
+			// printf("3) fpincnt=%d\n", fpincnt);
 	if(fpincnt>0){
 		fclose(fpin[fpincnt]);
 	}

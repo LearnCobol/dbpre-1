@@ -54,6 +54,12 @@
       *
            DISPLAY 'In PGCTB-ACTION.'
       *
+      *    EXEC SQL
+      *       ROLLBACK
+      *       please dont parse this...
+      *    END-EXEC
+      *
+      *
            PERFORM DISPLAY-ALL-RECORDS
       *
            DISPLAY 'Delete entire table'

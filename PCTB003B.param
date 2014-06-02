@@ -1,6 +1,6 @@
 DBHOST=localhost
 DBUSER=root
-DBPASSWD=as3jg
+DBPASSWD=YourPasswordHere!!!
 DBNAME=testdb
 DBPORT=03306
 DBSOCKET=null
