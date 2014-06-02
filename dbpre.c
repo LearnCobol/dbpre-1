@@ -8,8 +8,8 @@
    # define FALSE (0!=0)
 # endif
 
-# define DBPREVERSION "V 0.2"
-# define DBPREVERSIONLONG "V 0.2 2012-07-24"
+# define DBPREVERSION "V 0.3"
+# define DBPREVERSIONLONG "V 0.3 2014-06-02"
 
 char infilename[256];
 int tabstop=3;

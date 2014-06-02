@@ -1,8 +1,8 @@
-README.TXT for dbpre V 0.2                                           2012-07-24
+README.TXT for dbpre V 0.3                                           2014-06-03
 --------------------------
 
 Developed by the_piper@web.de
-For more infos see here: http://pipersopencoboltoolbox.blogspot.de/
+For more infos see here: https://sourceforge.net/projects/dbpre/
 
 File List
 =========
@@ -16,8 +16,8 @@ dbpre.c            - the source code of dbpre
 PCTB003B.param     - parameter file for test program 3 (cursors)
 PCTB003B.scb       - source code of test program 3 (.scb = Sql CoBol)
 PCTB003B.sh        - shell script to run test program 3
-POCTBBAT           - needed copybook, which includes some COBOL coding
-POCTBBATWS         - working storage stuff for copybook
+PGCTBBAT           - needed copybook, which includes some COBOL coding
+PGCTBBATWS         - working storage stuff for copybook
 SQLCA              - SQL communication area
 
 
@@ -25,7 +25,7 @@ Requirements
 ============
 gcc
 MySql
-OpenCobol
+OpenCobol/GnuCobol
 
 
 A short description how to use this early pre-alpha version of dbpre
@@ -50,13 +50,13 @@ To test dbpre type: dbpre --help
 This displays a help message and some more informations.
 
 
-The framework POCTB
+The framework PGCTB
 -------------------
-POCTB is an abbreviation for Pipers Open Cobol Tool Box.
+PGCTB is an abbreviation for Pipers Gnu Cobol Tool Box.
 
 The current framework is a framework for batch programs. It consists
-of the two files POCTBBAT, which has COBOL commands and calls to the
-MySql API, and POCTBBATWS, the needed WORKING STORAGE definitions for
+of the two files PGCTBBAT, which has COBOL commands and calls to the
+MySql API, and PGCTBBATWS, the needed WORKING STORAGE definitions for
 the framework.
 
 Further the SQLCA, the SQL Communication Area used to communicate with the
@@ -95,7 +95,7 @@ named PCTB003B.
 
 The parameter file
 ------------------
-The used framework, POCTBBAT, uses a parameter file named <programname>.param,
+The used framework, PGCTBBAT, uses a parameter file named <programname>.param,
 e.g: PCTB003B.param, which has definitions needed to connect to the database.
 
 Like this:
@@ -145,9 +145,10 @@ The source code with the EXEC SQL statements, the *.scb file
 
 The .cob file, produced by dbpre, the input for cobc
 
-The .lst file, produced by dbpre, which contains ERROR: messages, if ther are any
+The .lst file, produced by dbpre, which contains ERROR: messages, if there
+are any
 
-The copybooks of the framework, POCTBBAT, POCTBBATWS, SQLCA
+The copybooks of the framework, PGCTBBAT, PGCTBBATWS, SQLCA
 
 The param file, which has the parameters to connect to the MySql server
 
@@ -172,6 +173,6 @@ The End
 I hope, all this makes at least sense and is working, so you can test dbpre
 a little bit.
 
-For any comments, bug reports, suggestions, whatever, please write in my
-blog at http://pipersopencoboltoolbox.blogspot.de/
+For any comments, bug reports, suggestions, whatever, please post in the
+discussion section at https://sourceforge.net/projects/dbpre/
 or send an email to the_piper@web.de

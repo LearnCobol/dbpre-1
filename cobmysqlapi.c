@@ -1,5 +1,5 @@
-/*  cob-mysql  Version  3.1                            18/Apr/2012   */
-/*  Copyright (C) sanpontze. All Rights Reserved                     */
+/*  cob-mysql  Version  3.2                            18/May/2014    */
+/*  Copyright (C) sanpontze. All Rights Reserved                      */
 /**********************************************************************
 *   Version 003--Changed to correctly map to COBOL data types.
 *                05/07/2009--Marc Rodriguez
@@ -16,7 +16,9 @@
 *   Version 006--Changes to work together with the precompiler
 *                Added commit() and rollback() functions
 *                Added read_params()
-*                04/18/2012--The_Piper
+*                04/18/2012--The_Piper@web.de
+*   Version 007--Changes to work together with GnuCobol either 1.xx and 2.xx
+*                05/18/2014--The_Piper@web.de 20140518
 **********************************************************************/
 
 #include        <stdio.h>
@@ -29,6 +31,13 @@
 
 #define min(a,b) ((a) < (b) ? (a) : (b))
 
+#ifdef cob_c8_t  // for GnuCobol 2.xx  20140518
+	#define cob_call_params cobglobptr->cob_call_params
+	#define cob_current_module cobglobptr->cob_current_module
+	static
+	void *cobglobptr;
+#endif
+
 //function pointer prototype should not include paramater names                        //121609
 //static int (*func)(char *errno, const char *errmsg);                                 //121609
 static int (*func)(char *, const char *);                                              //121609
@@ -37,6 +46,7 @@ MYSQL            sql, *mysql=&sql;
 static int       errout;
 
 static const cob_field_attr MYSQL_FIELD_ATTRIBUTES = {33, 0, 0, 0, NULL};
+
 /******************************************************************************/
 int cobapi_read_line(FILE *fp, char *s){
 	int z;
@@ -366,6 +376,10 @@ int MySQL_init(MYSQL **cid, ...)
     int rc,n;
     char *fname;
     va_list args;
+
+#ifdef cob_c8_t // for GnuCobol 2.xx 20140518
+	 cobglobptr=cob_get_global_ptr();
+#endif
 
     *cid = mysql;
 

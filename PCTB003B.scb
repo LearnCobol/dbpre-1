@@ -18,10 +18,10 @@
         WORKING-STORAGE SECTION.
       *
       * The needed working storage stuff for the framework
-        COPY POCTBBATWS.
+        COPY PGCTBBATWS.
       *
       * This will be displayed in the logfile at runtime
-        01  POCTB-VERSION                    PIC  X(38) 
+        01  PGCTB-VERSION                    PIC  X(38) 
             VALUE '20120426 1.0 INITIAL RELEASE'.
       *
         01  FIELD1.
@@ -41,18 +41,18 @@
       *  P R O C E D U R E   D I V I S I O N                                   *
       **************************************************************************
         PROCEDURE DIVISION.
-      * The framework itself, calling POCTB-ACTION to run the users coding
+      * The framework itself, calling PGCTB-ACTION to run the users coding
            EXEC SQL
-               INCLUDE POCTBBAT REPLACING 'TTTTNNNB' BY 'PCTB003B'.
+               INCLUDE PGCTBBAT REPLACING 'TTTTNNNB' BY 'PCTB003B'.
            END-EXEC.
 
       /
       **************************************************************************
       *  P O C T B - A C T I O N   S E C T I O N                               *
       **************************************************************************
-        POCTB-ACTION SECTION. 
+        PGCTB-ACTION SECTION. 
       *
-           DISPLAY 'In POCTB-ACTION.'
+           DISPLAY 'In PGCTB-ACTION.'
       *
            PERFORM DISPLAY-ALL-RECORDS
       *
@@ -128,10 +128,10 @@
       * 
            PERFORM DISPLAY-ALL-RECORDS
       * 
-           DISPLAY 'Ende POCTB-ACTION.'
+           DISPLAY 'Ende PGCTB-ACTION.'
       *
            .
-        POCTB-ACTION-EXIT.
+        PGCTB-ACTION-EXIT.
            EXIT.
       /
       **************************************************************************

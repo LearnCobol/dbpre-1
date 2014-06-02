@@ -1,2 +1,2 @@
 gcc dbpre.c -odbpre -O5 -ggdb
-#####cp dbpre $HOME/poctbsh.dat/bin
+sudo cp dbpre /usr/local/bin
