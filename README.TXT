@@ -72,11 +72,35 @@ PGCTB is an abbreviation for Pipers Gnu Cobol Tool Box.
 The current framework is a framework for batch programs and subroutines. 
 It consists of the files PGCTBBAT, which has COBOL commands and calls to the
 MySql API, and PGCTBPARAM, the needed WORKING STORAGE definitions for BATCH
-programs.
-Further PGCTBSUB and PGCTBSUBWS, which is the same stuff for subroutines.
+programs and subroutines.
+
+Further PGCTBSUB and PGCTBSUBWS, which is the same stuff for subroutines 
+(Subroutines include PGCTBPARAM aswell).
 
 And the SQLCA, the SQL Communication Area used to communicate with the
 MySql API.
+
+The goal of this framework is to have transactions, which means, the
+framework does CONNECT and COMMIT and ROLLBACK for you, if needed.
+
+Under no circomstances write your own ROLLBACK and COMMIT statements!
+
+If you must handle an error and want to roll back the whole transaction,
+do this:
+
+          SET PGCTB-ERROR                  TO TRUE
+          MOVE 'an error occurred, run!!!' TO PGCTB-ERROR-MESSAGE
+          PERFORM PGCTB-STATUS
+
+This will cause the framework to display an error message including your
+PGCTB-ERROR-MESSAGE and ROLLBACK the whole transaction and STOP RUN the program.
+
+So, one BATCH program is one transaction, which includes all SQL statements
+issued by the BATCH program and all called Subroutines.
+
+At the end of that BATCH program, the framework will, in case of an error, roll 
+back the whole transaction and display an error message, or, if no error 
+occurred, commit the whole transaction to the database.
 
 
 The example programs
