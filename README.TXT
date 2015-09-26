@@ -105,9 +105,9 @@ occurred, commit the whole transaction to the database.
 
 The example programs
 --------------------
-There are two example programs coming with this release, PCTB003B.scb, a
-BATCH program, PCTB004B.scb and PCTB004S.scb, which is an example for a BATCH 
-program which calls a subroutine.
+There are two examples coming with this release, PCTB003B.scb, a BATCH program,
+PCTB004B.scb and PCTB004S.scb, which is an example for a BATCH program which 
+calls a subroutine.
 
 To compile, use the appropriate script, e.g. cPCTB003B.
 
