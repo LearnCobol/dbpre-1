@@ -1,2 +1,0 @@
-dbpre PCTB003B -ts=3 -I./
-cobc -x PCTB003B.cob cobmysqlapi.o -L/usr/lib/mysql -lmysqlclient

@@ -1,2 +1,0 @@
-PCTB003B >PCTB003B.log
-more PCTB003B.log

@@ -1,6 +1,0 @@
-DBHOST=localhost
-DBUSER=root
-DBPASSWD=YourPasswordHere!!!
-DBNAME=testdb
-DBPORT=03306
-DBSOCKET=null
