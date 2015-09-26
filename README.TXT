@@ -83,7 +83,7 @@ MySql API.
 The goal of this framework is to have transactions, which means, the
 framework does CONNECT and COMMIT and ROLLBACK for you, if needed.
 
-Under no circomstances write your own ROLLBACK and COMMIT statements!
+Under no circumstances write your own ROLLBACK and COMMIT statements!
 
 If you must handle an error and want to roll back the whole transaction,
 do this:
