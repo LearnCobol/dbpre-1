@@ -1,24 +1,38 @@
-README.TXT for dbpre V 0.3                                           2014-06-03
+README.TXT for dbpre V 0.4                                           2015-09-26
 --------------------------
 
 Developed by the_piper@web.de
 For more infos see here: https://sourceforge.net/projects/dbpre/
 
+dbpre is a precompiler for MySql and GnuCOBOL, it uses *.scb files
+(SQL CoBol) for input and creates a *.cob file, which must be
+compiled with GnuCOBOL to create either a module or an executable program.
+
+
 File List
 =========
 c                  - script to compile dbpre using gcc
+capi               - to compile the C api into an object file
 cobmysqlapi.c      - the modified api for mysql from the OpenCobol forums
 cobmysqlapi.o      - the object file of the api, to be linked to the programs
-cPCTB001B          - compile script to compile test program 1
-cPCTB002B          - compile script to compile test program 2
-cPCTB002B          - compile script to compile test program 3
+cPCTB003B          - compile script to compile test program 3
+cPCTB004B          - compile script to compile test program 4
+cPCTB004S          - compile script to compile test subroutine 4
 dbpre.c            - the source code of dbpre       
 PCTB003B.param     - parameter file for test program 3 (cursors)
 PCTB003B.scb       - source code of test program 3 (.scb = Sql CoBol)
 PCTB003B.sh        - shell script to run test program 3
-PGCTBBAT           - needed copybook, which includes some COBOL coding
-PGCTBBATWS         - working storage stuff for copybook
+PCTB004B.param     - parameter file for test program 4 (cursors + subroutine)
+PCTB004B.scb       - source code of test program 4 (.scb = Sql CoBol)
+PCTB004B.sh        - shell script to run test program 4
+PCTB004S.scb       - source code for test subroutine 4
+PCTB004P001        - parameter block for subroutine 4, number 001
+PGCTBBAT           - copybook for BATCH which includes some COBOL coding
+PGCTBPARAM         - working storage stuff for BATCH programs / Subroutines
+PGCTBSUB           - copybook for SUBROUTINES which includes some COBOL code
+PGCTBSUBWS         - working storage stuff for Subroutines
 SQLCA              - SQL communication area
+
 
 
 Requirements
@@ -39,6 +53,7 @@ release, you must compile your own one from cobmysqlapi.c.
 This object file will be linked later to the COBOL-programs.
 
 Compile it with: gcc -I/usr/include/mysql -c cobmysqlapi.c
+or use the shell script capi.
 
 
 Compiling dbpre
@@ -54,24 +69,23 @@ The framework PGCTB
 -------------------
 PGCTB is an abbreviation for Pipers Gnu Cobol Tool Box.
 
-The current framework is a framework for batch programs. It consists
-of the two files PGCTBBAT, which has COBOL commands and calls to the
-MySql API, and PGCTBBATWS, the needed WORKING STORAGE definitions for
-the framework.
+The current framework is a framework for batch programs and subroutines. 
+It consists of the files PGCTBBAT, which has COBOL commands and calls to the
+MySql API, and PGCTBPARAM, the needed WORKING STORAGE definitions for BATCH
+programs.
+Further PGCTBSUB and PGCTBSUBWS, which is the same stuff for subroutines.
 
-Further the SQLCA, the SQL Communication Area used to communicate with the
+And the SQLCA, the SQL Communication Area used to communicate with the
 MySql API.
-
-This is a frame work for Batch programs (program name ends with the letter 'B').
-Later i am going to add stuff for subroutines and transactions, which will then
-have different copybooks.
 
 
 The example programs
 --------------------
-There is one example programs coming with this release, PCTB003B.scb.
+There are two example programs coming with this release, PCTB003B.scb, a
+BATCH program, PCTB004B.scb and PCTB004S.scb, which is an example for a BATCH 
+program which calls a subroutine.
 
-To compile it, use the appropriate script, cPCTB003B.
+To compile, use the appropriate script, e.g. cPCTB003B.
 
 This is how compiling works:
 First call dbpre with the program name without suffix
@@ -85,13 +99,15 @@ messages, if dbpre has found any errors.
 Load the .lst file with your favorite editor and search for ERROR:
 
 If dbpre has reported no errors, the cobol source code, the .cob file, can
-be compiled with the OpenCobol compiler.
+be compiled with the GnuCobol compiler.
 
 E.g: cobc -x PCTB003B.cob cobmysqlapi.o -L/usr/lib/mysql -lmysqlclient
 
 If cobc has no errors to report, you should now have an executable file
 named PCTB003B.
 
+To compile a subroutine, use -m instead of -x. -m creates a module, a *.so
+library, while -x creates an executable binary file.
 
 The parameter file
 ------------------
@@ -115,8 +131,9 @@ mysql and so on.
 
 When you have done that, you can start the test program by typing it's name
 like PCTB003B and you should see the output.
-You can use too the shell scripts, which are included for each test program,
-but they only redirect the output into a log file, thats it.
+Or use the appropriate script, e.g. PCTB003B.sh, which redirects the output
+into a logfile and displays it with the 'more' command.
+
 
 
 The MySql example_table
@@ -126,7 +143,7 @@ which must look like this:
 
 Name: example_table:
 
-+--------+----------+------+-----+---------+-------+
++--------+----------+------+-----+---------+-------+
 | Field  | Type     | Null | Key | Default | Extra |
 +--------+----------+------+-----+---------+-------+
 | field1 | char(20) | NO   |     | NULL    |       |
@@ -148,7 +165,9 @@ The .cob file, produced by dbpre, the input for cobc
 The .lst file, produced by dbpre, which contains ERROR: messages, if there
 are any
 
-The copybooks of the framework, PGCTBBAT, PGCTBBATWS, SQLCA
+The copybooks of the framework, PGCTBBAT, PGCTBPARAM, SQLCA,
+for subroutines PGCTBSUB and PGCTBSUBWS.
+
 
 The param file, which has the parameters to connect to the MySql server
 
@@ -159,8 +178,8 @@ Look at the example programs, how error handling is done with an
 EVALUATE..END-EVALUATE statement.
 
 To handle run time errors, the error message will tell you a sequence number.
-Look at the .cob file and search for it to identify the SQL statement, which
-caused the error.
+Look at the .cob or .lst file and search for that number to identify the SQL 
+statement, which caused the error.
 
 For example, the error message reports a sequence number of 12, look at the
 .cob file and search for "MOVE 12" until you have found the line
