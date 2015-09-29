@@ -9,7 +9,10 @@ dbpre is a precompiler for PostgreSQL and GnuCOBOL, it uses *.scb files
 compiled with GnuCOBOL to create either a module or an executable program.
 
 The code for PostgreSQL was written by John A. McKown who is solely 
-responsible for any errors encountered. 
+responsible for any errors encountered. According to the SourceForge page,
+this code is licensed under the "Creative Commons Attribution" license.
+I have included this license in the file LICENSE.md.
+It can be seen at: https://creativecommons.org/licenses/by/4.0/legalcode
 
 
 File List
