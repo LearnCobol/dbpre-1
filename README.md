@@ -13,6 +13,8 @@ responsible for any errors encountered. According to the SourceForge page,
 this code is licensed under the "Creative Commons Attribution" license.
 I have included this license in the file LICENSE.md.
 It can be seen at: https://creativecommons.org/licenses/by/4.0/legalcode
+The original code was downloaded using the command:
+git svn clone svn://svn.code.sf.net/p/dbpre/code dbpre-code
 
 
 File List
