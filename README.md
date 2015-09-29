@@ -4,9 +4,12 @@ README.TXT for dbpre V 0.4                                           2015-09-26
 Developed by the_piper@web.de
 For more infos see here: https://sourceforge.net/projects/dbpre/
 
-dbpre is a precompiler for MySql and GnuCOBOL, it uses *.scb files
+dbpre is a precompiler for PostgreSQL and GnuCOBOL, it uses *.scb files
 (SQL CoBol) for input and creates a *.cob file, which must be
 compiled with GnuCOBOL to create either a module or an executable program.
+
+The code for PostgreSQL was written by John A. McKown who is solely 
+responsible for any errors encountered. 
 
 
 File List
